@@ -6,47 +6,53 @@ on:
       - master
 
 permissions:
-  id-token: write
   contents: read
 
 jobs:
   validate:
     runs-on: ubuntu-latest
     name: terraform fmt check
-    outputs:
-      CHECK_STATUS: "${{ env.CHECK_STATUS }}"
+
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 2
-      - name: Fetch changed files
-        id: pr_files
-        uses: jitterbit/get-changed-files@v1
+          fetch-depth: 0
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v44
         with:
-          format: "space-delimited"
-      - name: Configure terraform
-        uses: hashicorp/setup-terraform@v2
+          files: |
+            **/*.tf
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.2.4
-      - name: Validate terraform fmt (added_modified)
+
+      - name: Check terraform fmt
+        shell: bash
         run: |
-          set +e
+          failed=0
 
-          echo "CHECK_STATUS=0" >> $GITHUB_ENV
+          if [[ -z "${{ steps.changed-files.outputs.all_changed_files }}" ]]; then
+            echo "No Terraform files changed."
+            exit 0
+          fi
 
-          for changed_file in ${{ steps.pr_files.outputs.added_modified }}; do
-            echo "Checking terraform fmt on ${changed_file}..."
+          for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
+            echo "Checking terraform fmt on $file..."
 
-            if [[ $changed_file == *.tf ]]; then
-              terraform fmt -check $changed_file
-              FMT_STATUS=$(echo $?)
-
-              if [[ $FMT_STATUS -ne 0 ]]; then
-                echo "❌ terraform fmt failed - ${changed_file}" >> $GITHUB_STEP_SUMMARY
-                echo "CHECK_STATUS=1" >> $GITHUB_ENV
-              fi
+            if ! terraform fmt -check "$file"; then
+              echo "❌ terraform fmt failed: $file" >> "$GITHUB_STEP_SUMMARY"
+              failed=1
+            else
+              echo "✅ terraform fmt passed: $file" >> "$GITHUB_STEP_SUMMARY"
             fi
           done
-      - name: Process check
-        if: always()
-        run: exit $CHECK_STATUS
+
+          if [[ $failed -ne 0 ]]; then
+            echo "One or more Terraform files are not properly formatted."
+            exit 1
+          fi
