@@ -1,4 +1,5 @@
-name: Validate terraform fmt
+name: Terraform Checks
+
 on:
   pull_request:
     branches:
@@ -9,50 +10,25 @@ permissions:
   contents: read
 
 jobs:
-  validate:
+  terraform:
     runs-on: ubuntu-latest
-    name: terraform fmt check
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Get changed files
-        id: changed-files
-        uses: tj-actions/changed-files@v44
-        with:
-          files: |
-            **/*.tf
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.2.4
 
-      - name: Check terraform fmt
-        shell: bash
-        run: |
-          failed=0
+      - name: Terraform fmt
+        run: terraform fmt -check -recursive
 
-          if [[ -z "${{ steps.changed-files.outputs.all_changed_files }}" ]]; then
-            echo "No Terraform files changed."
-            exit 0
-          fi
+      - name: Terraform init
+        working-directory: ./infrastructure
+        run: terraform init -backend=false
 
-          for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
-            echo "Checking terraform fmt on $file..."
-
-            if ! terraform fmt -check "$file"; then
-              echo "❌ terraform fmt failed: $file" >> "$GITHUB_STEP_SUMMARY"
-              failed=1
-            else
-              echo "✅ terraform fmt passed: $file" >> "$GITHUB_STEP_SUMMARY"
-            fi
-          done
-
-          if [[ $failed -ne 0 ]]; then
-            echo "One or more Terraform files are not properly formatted."
-            exit 1
-          fi
+      - name: Terraform validate
+        working-directory: ./infrastructure
+        run: terraform validate
