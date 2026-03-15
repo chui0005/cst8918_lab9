@@ -5,8 +5,8 @@ terraform {
   required_providers {
     # Azure Resource Manager provider and version
     azurerm = {
-      source  = hashicorp/azurerm"
-            version = "~> 3.0.2"
+      source  = "hashicorp/azurerm"
+      version = "~> 3.0.2"
     }
   }
 }
@@ -20,8 +20,8 @@ provider "azurerm" {
 
 
 resource "azurerm_resource_group" "lab_rg" {
-       name     = "chui0005-lab9-RG"
-  location         = "Canada Central"
+  name     = "chui0005-lab9-RG"
+  location = "Canada Central"
 }
 
 
