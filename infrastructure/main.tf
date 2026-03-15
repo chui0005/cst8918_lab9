@@ -20,8 +20,8 @@ provider "azurerm" {
 
 
 resource "azurerm_resource_group" "lab_rg" {
-       name     = "chui0005-lab9-RG"
-  location =      "Canada Central"
+  name     = "chui0005-lab9-RG"
+  location = "Canada Central"
 }
 
 
